@@ -6,3 +6,5 @@ google-generativeai
 python-multipart
 pillow
 pandas
+
+# force vercel to rebuild cache

@@ -30,14 +30,15 @@ async def analyze_smishing(file: UploadFile = File(None), text_input: str = Form
         elif file:
             contents = await file.read()
             
-            # REQUIRED FIX: Wrap the image bytes correctly for the new GenAI SDK
+            # Wrap the image bytes correctly for the GenAI SDK
             image_part = types.Part.from_bytes(
                 data=contents,
                 mime_type=file.content_type
             )
             
+            # Updated to 3.8 flash
             ocr_response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.8-flash',
                 contents=[
                     image_part,
                     "Extract only the readable text from this image. Do not add any commentary."
@@ -61,9 +62,9 @@ async def analyze_smishing(file: UploadFile = File(None), text_input: str = Form
         [TAG: MALICIOUS]
         """
 
-        # 3. Generate Report
+        # 3. Generate Report - Updated to 3.8 flash
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.8-flash',
             contents=prompt
         )
         result_text = response.text.strip()

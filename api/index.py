@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from google import genai
+from google.genai import types
 import os
 import re
 import joblib
@@ -28,10 +29,17 @@ async def analyze_smishing(file: UploadFile = File(None), text_input: str = Form
             analyzed_text = text_input.strip()
         elif file:
             contents = await file.read()
+            
+            # REQUIRED FIX: Wrap the image bytes correctly for the new GenAI SDK
+            image_part = types.Part.from_bytes(
+                data=contents,
+                mime_type=file.content_type
+            )
+            
             ocr_response = client.models.generate_content(
                 model='gemini-2.5-flash',
                 contents=[
-                    {"mime_type": file.content_type, "data": contents},
+                    image_part,
                     "Extract only the readable text from this image. Do not add any commentary."
                 ]
             )
@@ -63,18 +71,16 @@ async def analyze_smishing(file: UploadFile = File(None), text_input: str = Form
         # 4. Determine Verdict (Default to Safe, prove it is Malicious)
         is_malicious = False
         
-        # Check strict Gemini tag
         if "[TAG: MALICIOUS]" in result_text.upper():
             is_malicious = True
             
-        # Check Scikit-Learn Model (if available and Gemini missed it)
         if ml_model is not None:
             try:
                 prediction = ml_model.predict([analyzed_text])[0]
                 if prediction == 1 or str(prediction).lower() == 'spam':
                     is_malicious = True
             except Exception:
-                pass # Fall back entirely to Gemini if the ML model format mismatches
+                pass 
 
         # 5. Clean up data for the Frontend UI
         clean_report = result_text.replace("[TAG: MALICIOUS]", "").replace("[TAG: SAFE]", "").strip()
